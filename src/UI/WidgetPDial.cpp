@@ -25,7 +25,10 @@
     This file is a derivative of the ZynAddSubFX original.
 
 */
+#include <string>
+#include <stdexcept>
 
+#include <FL/fl_ask.H>
 #include "WidgetPDial.h"
 #include "Misc/NumericFuncs.h"
 
@@ -95,6 +98,19 @@ int WidgetPDial::handle(int event)
     switch (event)
     {
     case FL_PUSH:
+      if (Fl::event_state(FL_SHIFT) != 0) {
+        auto input = fl_input("Enter the new value (min/max = %.2f/%.2f)",
+                              std::to_string(value()).c_str(), min, max);
+        if (input != nullptr) {
+          try {
+            auto result = std::stof(input);
+            value(clamp(result));
+          } catch (std::invalid_argument &e) {
+            printf("Not a valid float: %s\n", input);
+          }
+        }
+        return 1;
+      }
     case FL_DRAG: // done this way to suppress warnings
         if (event == FL_PUSH)
         {
