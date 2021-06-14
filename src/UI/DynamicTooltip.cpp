@@ -117,6 +117,10 @@ void DynTooltip::setValue(float val)
     }
 }
 
+ValueType DynTooltip::getValueType() {
+  return valueType;
+}
+
 /*
   Calling with true causes only the formatted value
   and the associated graphics to be shown in the tooltip.

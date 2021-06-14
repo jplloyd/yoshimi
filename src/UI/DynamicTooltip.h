@@ -45,6 +45,7 @@ class DynTooltip : private Fl_Menu_Window {
   DynTooltip();
   ~DynTooltip();
   void setValue(float);
+  ValueType getValueType();
   void setValueType(ValueType vt);
   void setGraphicsType(ValueType gv_);
   void setTooltipText(const string& tt_text);

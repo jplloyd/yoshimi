@@ -41,6 +41,35 @@
 
 using func::limit;
 
+struct InputInfo {
+  float (*toReal)(float);
+  float (*fromReal)(float);
+  const char* title;
+};
+
+float masterVolCnv(float input) {
+  return (input - 96.0f) / 96.0f * 40.0f;
+}
+
+// y = (x - 96) / 96 * 40
+// (y / 40) * 96 + 96 = x
+
+float masterVolInv(float input) {
+  return (input / 40.0f) * 96.0f + 96.0f;
+}
+
+// q = (x - n) / n * m
+// ((q / m) * n) + n = inp
+static InputInfo conversionSetup(ValueType type) {
+
+  switch (type) {
+  case VC_MasterVolume:
+    return {&masterVolCnv, &masterVolInv, "Set master volume (db)"};
+  default:
+    return {nullptr, nullptr, "Set value"};
+  }
+}
+
 WidgetPDial::WidgetPDial(int x,int y, int w, int h, const char *label) : Fl_Dial(x,y,w,h,label)
 {
     Fl_Group *save = Fl_Group::current();
@@ -82,6 +111,38 @@ void WidgetPDial::value(double val)
     dyntip->setOnlyValue(true);
 }
 
+float id(float a) {
+  return a;
+}
+
+bool manual_input(Fl_Valuator& widget,
+                  float toRealValue(float) = nullptr,
+                  float fromRealValue(float) = nullptr,
+                  const char *desc = nullptr) {
+  if (toRealValue == nullptr || fromRealValue == nullptr) {
+    toRealValue = &id;
+    fromRealValue = &id;
+  }
+  float val = toRealValue(widget.value());
+  if (desc != nullptr) {
+    fl_message_title(desc);
+  }
+  auto min = toRealValue(widget.minimum());
+  auto max = toRealValue(widget.maximum());
+  auto input = fl_input("%s (min: %.2f, max: %.2f)",
+                        std::to_string(val).c_str(), desc, min, max);
+  if (input != nullptr) {
+    try {
+      auto result = std::stof(input);
+      widget.value(widget.clamp(fromRealValue(result)));
+      return true;
+    } catch (std::invalid_argument &e) {
+      printf("Could not convert string to float");
+    }
+  }
+  return false;
+}
+
 double WidgetPDial::value()
 {
     return Fl_Valuator::value();
@@ -99,15 +160,10 @@ int WidgetPDial::handle(int event)
     {
     case FL_PUSH:
       if (Fl::event_state(FL_SHIFT) != 0) {
-        auto input = fl_input("Enter the new value (min/max = %.2f/%.2f)",
-                              std::to_string(value()).c_str(), min, max);
-        if (input != nullptr) {
-          try {
-            auto result = std::stof(input);
-            value(clamp(result));
-          } catch (std::invalid_argument &e) {
-            printf("Not a valid float: %s\n", input);
-          }
+        auto info = conversionSetup(dyntip->getValueType());
+        if(manual_input(*this, info.toReal, info.fromReal, info.title)) {
+          value_damage();
+          do_callback();
         }
         return 1;
       }
